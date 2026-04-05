@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinView — Finance Dashboard</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Our styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Mobile menu button (only visible on small screens) -->
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+  <div class="shell role-viewer" id="shell">
+
+    <!-- ========== SIDEBAR ========== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">Fin<span>View</span></div>
+
+      <div class="nav-item active" onclick="goTo('dashboard', this)">
+        <span class="nav-icon">▦</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="goTo('transactions', this)">
+        <span class="nav-icon">↕</span> Transactions
+      </div>
+      <div class="nav-item" onclick="goTo('insights', this)">
+        <span class="nav-icon">◎</span> Insights
+      </div>
+
+      <!-- Role switcher at the bottom of sidebar -->
+      <div class="role-switcher">
+        <label>SWITCH ROLE</label>
+        <select id="roleSelect" onchange="switchRole(this.value)">
+          <option value="viewer">👁 Viewer</option>
+          <option value="admin">🛡 Admin</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="main">
+
+      <!-- DASHBOARD PAGE -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p id="dash-date"></p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-grid" id="summaryCards"></div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-title">Balance Trend (Monthly)</div>
+            <div class="chart-wrap">
+              <canvas id="lineChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Spending by Category</div>
+            <div class="chart-wrap">
+              <canvas id="doughnutChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent 5 transactions -->
+        <div class="card">
+          <div class="card-row-header">
+            <span>Recent Transactions</span>
+            <span class="view-all-link" onclick="goTo('transactions', null)">View all →</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody id="recentTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TRANSACTIONS PAGE -->
+      <div class="page" id="page-transactions">
+        <div class="page-header">
+          <h1>Transactions</h1>
+          <p>All your financial activity in one place.</p>
+        </div>
+
+        <!-- Filter / Search toolbar -->
+        <div class="toolbar">
+          <input type="text" id="searchInput" placeholder="Search transactions..." oninput="renderTable()" />
+          <select id="filterType" onchange="renderTable()">
+            <option value="">All Types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+          <select id="filterCat" onchange="renderTable()">
+            <option value="">All Categories</option>
+          </select>
+          <select id="sortSelect" onchange="renderTable()">
+            <option value="date-desc">Date ↓</option>
+            <option value="date-asc">Date ↑</option>
+            <option value="amount-desc">Amount ↓</option>
+            <option value="amount-asc">Amount ↑</option>
+          </select>
+          <!-- Only admin sees Add button -->
+          <button class="btn btn-primary admin-only" onclick="openModal()">+ Add</button>
+          <button class="btn btn-green" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Type</th>
+              <th class="admin-only">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="txTbody"></tbody>
+        </table>
+        <div class="empty-state" id="emptyState" style="display: none;">
+          No transactions found.
+        </div>
+      </div>
+
+      <!-- INSIGHTS PAGE -->
+      <div class="page" id="page-insights">
+        <div class="page-header">
+          <h1>Insights</h1>
+          <p>A quick look at your spending patterns.</p>
+        </div>
+        <div class="insights-grid" id="insightsGrid"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ========== ADD TRANSACTION MODAL ========== -->
+  <div class="overlay" id="overlay" onclick="closeModalOutside(event)">
+    <div class="modal">
+      <h2>Add Transaction</h2>
+
+      <div class="form-group">
+        <label>Description</label>
+        <input id="f-desc" type="text" placeholder="e.g. Netflix Subscription" />
+      </div>
+      <div class="form-group">
+        <label>Amount (₹)</label>
+        <input id="f-amount" type="number" min="1" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="f-type">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-cat">
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Shopping</option>
+          <option>Health</option>
+          <option>Entertainment</option>
+          <option>Salary</option>
+          <option>Freelance</option>
+          <option>Utilities</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input id="f-date" type="date" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="addTransaction()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Our scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
